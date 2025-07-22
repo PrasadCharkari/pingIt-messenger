@@ -13,8 +13,8 @@ import { useToast } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const handleClick = () => setShow(!show);
@@ -25,7 +25,7 @@ function Login() {
     setLoading(true);
     if (!email || !password) {
       toast({
-        title: "Please Fill all the Feilds",
+        title: "Please Fill all the Fields",
         status: "warning",
         duration: 5000,
         isClosable: true,
@@ -38,7 +38,7 @@ function Login() {
     try {
       const config = {
         headers: {
-          "Content-type": "application/json",
+          "Content-Type": "application/json",
         },
       };
 
@@ -51,7 +51,7 @@ function Login() {
       toast({
         title: "Login Successful",
         status: "success",
-        duration: 5000,
+        duration: 2000,
         isClosable: true,
         position: "bottom",
       });
@@ -84,6 +84,7 @@ function Login() {
           borderWidth="2px"
           type="email"
           placeholder="Enter Your Email Address"
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </FormControl>
@@ -98,6 +99,7 @@ function Login() {
             borderWidth="2px"
             type={show ? "text" : "password"}
             placeholder="Enter Password"
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           <InputRightElement width="4.5rem">
@@ -123,6 +125,7 @@ function Login() {
         textColor={"white"}
         style={{ marginTop: 15 }}
         onClick={submitHandler}
+        isLoading={loading}
       >
         Login
       </Button>
