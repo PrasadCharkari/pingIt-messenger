@@ -46,6 +46,14 @@ app.options("*", cors());
 
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("API is running successfully");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", message: "Server is running" });
+});
+
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
@@ -54,9 +62,14 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () =>
-  console.log(`Server started on PORT ${PORT}`.yellow.bold)
-);
+
+const server = app
+  .listen(PORT, "0.0.0.0", () => {
+    console.log(`Server started on PORT ${PORT}`.yellow.bold);
+  })
+  .on("error", (err) => {
+    console.error("Server failed to start:", err);
+  });
 
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
@@ -97,5 +110,20 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("USER DISCONNECTED");
+  });
+});
+
+process.on("unhandledRejection", (err, promise) => {
+  console.log(`Error: ${err.message}`.red);
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
   });
 });
