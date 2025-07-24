@@ -40,92 +40,96 @@ app.use(
 app.options("*", cors());
 app.use(express.json());
 
+let dbConnected = false;
+
 app.get("/", (req, res) => {
-  res.status(200).json({
-    message: "PingIt Messenger API is running successfully",
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-  });
+  res.status(200).send("PingIt Messenger API is running");
 });
 
 app.get("/health", (req, res) => {
   res.status(200).json({
-    status: "OK",
-    message: "Server is running",
+    status: "healthy",
+    database: dbConnected ? "connected" : "connecting",
     uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
 });
-
-const userRoutes = require("./routes/userRoutes");
-const chatRoutes = require("./routes/chatRoutes");
-const messageRoutes = require("./routes/messageRoutes");
-const { notFound, errorHandler } = require("./middleware/errorMiddleware");
-
-app.use("/api/user", userRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/message", messageRoutes);
-
-app.use(notFound);
-app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server started on PORT ${PORT}`.yellow.bold);
-  console.log(`Health check available at: http://0.0.0.0:${PORT}/health`);
-});
 
-server.on("error", (err) => {
-  console.error("Server error:", err);
-});
+  setTimeout(() => {
+    const userRoutes = require("./routes/userRoutes");
+    const chatRoutes = require("./routes/chatRoutes");
+    const messageRoutes = require("./routes/messageRoutes");
+    const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
-const io = require("socket.io")(server, {
-  pingTimeout: 60000,
-  cors: {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST"],
-  },
-});
+    app.use("/api/user", userRoutes);
+    app.use("/api/chat", chatRoutes);
+    app.use("/api/message", messageRoutes);
 
-io.on("connection", (socket) => {
-  console.log("Connected to socket.io");
+    app.use(notFound);
+    app.use(errorHandler);
 
-  socket.on("setup", (userData) => {
-    socket.join(userData._id);
-    socket.emit("connected");
-  });
-
-  socket.on("join chat", (room) => {
-    socket.join(room);
-    console.log("User Joined Room: " + room);
-  });
-
-  socket.on("typing", (room) => socket.in(room).emit("typing"));
-  socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
-
-  socket.on("new message", (newMessageRecieved) => {
-    const chat = newMessageRecieved.chat;
-
-    if (!chat.users) return console.log("chat.users not defined");
-
-    chat.users.forEach((user) => {
-      if (user._id === newMessageRecieved.sender._id) return;
-
-      socket.in(user._id).emit("message recieved", newMessageRecieved);
+    const io = require("socket.io")(server, {
+      pingTimeout: 60000,
+      cors: {
+        origin: allowedOrigins,
+        credentials: true,
+        methods: ["GET", "POST"],
+      },
     });
-  });
 
-  socket.on("disconnect", () => {
-    console.log("USER DISCONNECTED");
-  });
+    io.on("connection", (socket) => {
+      console.log("Connected to socket.io");
+
+      socket.on("setup", (userData) => {
+        socket.join(userData._id);
+        socket.emit("connected");
+      });
+
+      socket.on("join chat", (room) => {
+        socket.join(room);
+        console.log("User Joined Room: " + room);
+      });
+
+      socket.on("typing", (room) => socket.in(room).emit("typing"));
+      socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
+
+      socket.on("new message", (newMessageRecieved) => {
+        const chat = newMessageRecieved.chat;
+
+        if (!chat.users) return console.log("chat.users not defined");
+
+        chat.users.forEach((user) => {
+          if (user._id === newMessageRecieved.sender._id) return;
+
+          socket.in(user._id).emit("message recieved", newMessageRecieved);
+        });
+      });
+
+      socket.on("disconnect", () => {
+        console.log("USER DISCONNECTED");
+      });
+    });
+
+    const connectDB = require("./config/db");
+    connectDB()
+      .then(() => {
+        dbConnected = true;
+        console.log("Database connection completed");
+      })
+      .catch((err) => {
+        console.error("Database connection failed:", err);
+      });
+  }, 2000);
 });
 
-const connectDB = require("./config/db");
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
 
-setTimeout(() => {
-  connectDB().catch((err) => {
-    console.error("Database connection failed:", err);
-  });
-}, 1000);
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+});
