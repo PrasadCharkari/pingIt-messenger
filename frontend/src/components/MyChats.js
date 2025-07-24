@@ -22,7 +22,10 @@ const MyChats = ({ fetchAgain }) => {
         },
       };
 
-      const { data } = await axios.get("/api/chat", config);
+      const { data } = await axios.get(
+        "https://pingit-messenger.onrender.com/api/chat",
+        config
+      );
       console.log("Fetched data:", data);
       setChats(data);
     } catch (error) {
