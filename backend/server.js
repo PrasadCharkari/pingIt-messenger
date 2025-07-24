@@ -34,7 +34,6 @@ app.use(
 );
 
 app.options("*", cors());
-
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -93,12 +92,9 @@ io.on("connection", (socket) => {
 
   socket.on("new message", (newMessageRecieved) => {
     const chat = newMessageRecieved.chat;
-
-    if (!chat.users) return console.log("chat.users not defined");
-
+    if (!chat.users) return;
     chat.users.forEach((user) => {
       if (user._id === newMessageRecieved.sender._id) return;
-
       socket.in(user._id).emit("message recieved", newMessageRecieved);
     });
   });
@@ -118,7 +114,6 @@ process.on("unhandledRejection", (err, promise) => {
 process.on("SIGTERM", () => {
   console.log("SIGTERM received, shutting down gracefully");
   server.close(() => {
-    console.log("Server closed");
     process.exit(0);
   });
 });
